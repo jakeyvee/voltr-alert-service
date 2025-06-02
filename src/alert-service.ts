@@ -263,8 +263,7 @@ class VoltrAlertService {
     };
     this.sendInfoAlert(infoAlert);
 
-    // Check for significant PnL change relative to transaction amount
-    const pnlToAmountRatio = Math.abs(pnl / amount);
+    const pnlToAmountRatio = Math.abs(pnl / totalValueAfter);
     if (pnlToAmountRatio > CONFIG.thresholds.largeStrategyPnlPercent) {
       const criticalAlert: StrategyPnLAlert = {
         type: "strategy_significant_pnl",
@@ -321,7 +320,7 @@ class VoltrAlertService {
     this.sendInfoAlert(infoAlert);
 
     // Check for significant PnL change relative to transaction amount
-    const pnlToAmountRatio = Math.abs(pnl / amount);
+    const pnlToAmountRatio = Math.abs(pnl / totalValueAfter);
     if (pnlToAmountRatio > CONFIG.thresholds.largeStrategyPnlPercent) {
       const criticalAlert: StrategyPnLAlert = {
         type: "strategy_significant_pnl",
@@ -380,7 +379,7 @@ class VoltrAlertService {
     this.sendInfoAlert(infoAlert);
 
     // Check for significant PnL change relative to transaction amount
-    const pnlToAmountRatio = Math.abs(pnl / amount);
+    const pnlToAmountRatio = Math.abs(pnl / totalValueAfter);
     if (pnlToAmountRatio > CONFIG.thresholds.largeStrategyPnlPercent) {
       const criticalAlert: StrategyPnLAlert = {
         type: "strategy_significant_pnl",
