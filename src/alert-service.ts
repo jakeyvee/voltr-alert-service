@@ -135,6 +135,14 @@ class VoltrAlertService {
   }
 
   private trackEventFrequency(event: VaultEvent): void {
+    // only track vault related event
+    if (
+      event.eventName.match("depositStrategyEvent") ||
+      event.eventName.match("withdrawStrategyEvent")
+    ) {
+      return;
+    }
+
     const now = Date.now();
     const key = `${event.eventName}_${event.eventData.vault}`;
 
