@@ -10,7 +10,6 @@ export interface TelegramConfig {
 export interface AlertThresholds {
   largeVaultDepositPercent: number;
   largeVaultWithdrawalPercent: number;
-  largeStrategyMovePercent: number;
   largeStrategyPnlPercent: number;
   highFrequencyEvents: number;
   highFrequencyWindow: number;

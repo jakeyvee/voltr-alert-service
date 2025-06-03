@@ -36,7 +36,6 @@ const CONFIG: ServiceConfig = {
   thresholds: {
     largeVaultDepositPercent: 0.1, // 10% of total vault value
     largeVaultWithdrawalPercent: 0.1, // 10% of total vault value
-    largeStrategyMovePercent: 0.1, // 10% of total vault value
     largeStrategyPnlPercent: 0.01, // 1% PnL change
     highFrequencyEvents: 10,
     highFrequencyWindow: 60000,
@@ -287,21 +286,6 @@ class VoltrAlertService {
       };
       this.sendCriticalAlert(criticalAlert);
     }
-
-    // Check for large strategy move based on transaction size percentage
-    if (transactionPercent > CONFIG.thresholds.largeStrategyMovePercent * 100) {
-      const criticalAlert: LargeTransactionAlert = {
-        type: "large_strategy_deposit",
-        amount: amount,
-        percentage: transactionPercent,
-        threshold: CONFIG.thresholds.largeStrategyMovePercent * 100,
-        vault: eventData.vault,
-        strategy: eventData.strategy!,
-        manager: eventData.manager!,
-        timestamp: event.timestamp,
-      };
-      this.sendCriticalAlert(criticalAlert);
-    }
   }
 
   private handleStrategyWithdrawal(event: VaultEvent): void {
@@ -337,21 +321,6 @@ class VoltrAlertService {
         pnlPercent: pnlPercent,
         pnlToAmountRatio: pnlToAmountRatio,
         threshold: CONFIG.thresholds.largeStrategyPnlPercent,
-        vault: eventData.vault,
-        strategy: eventData.strategy!,
-        manager: eventData.manager!,
-        timestamp: event.timestamp,
-      };
-      this.sendCriticalAlert(criticalAlert);
-    }
-
-    // Check for large strategy move based on transaction size percentage
-    if (transactionPercent > CONFIG.thresholds.largeStrategyMovePercent * 100) {
-      const criticalAlert: LargeTransactionAlert = {
-        type: "large_strategy_withdrawal",
-        amount: amount,
-        percentage: transactionPercent,
-        threshold: CONFIG.thresholds.largeStrategyMovePercent * 100,
         vault: eventData.vault,
         strategy: eventData.strategy!,
         manager: eventData.manager!,
