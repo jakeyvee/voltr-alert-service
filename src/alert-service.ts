@@ -11,6 +11,7 @@ import {
   AlertData,
   InfoAlertData,
   LargeTransactionAlert,
+  LargeRequestWithdrawalAlert,
   HighFrequencyAlert,
   TelegramMessage,
   TelegramResponse,
@@ -37,6 +38,7 @@ const CONFIG: ServiceConfig = {
     largeVaultDepositPercent: 0.1, // 10% of total vault value
     largeVaultWithdrawalPercent: 0.1, // 10% of total vault value
     largeStrategyPnlPercent: 0.01, // 1% PnL change
+    largeRequestWithdrawPercent: 0.15, // 15% of total vault value for request withdrawals
     highFrequencyEvents: 10,
     highFrequencyWindow: 60000,
   },
@@ -128,6 +130,12 @@ class VoltrAlertService {
       case "directWithdrawStrategyEvent":
         this.handleDirectStrategyWithdraw(event);
         break;
+      case "requestWithdrawVaultEvent":
+        this.handleRequestWithdrawVault(event);
+        break;
+      case "cancelRequestWithdrawVaultEvent":
+        this.handleCancelRequestWithdrawVault(event);
+        break;
       default:
       // console.log(`Unhandled event type: ${eventName}`);
     }
@@ -172,6 +180,69 @@ class VoltrAlertService {
       };
       this.sendCriticalAlert(alertData);
     }
+  }
+
+  private handleRequestWithdrawVault(event: VaultEvent): void {
+    const { eventData } = event;
+    const requestedAmount = eventData.requestedAmount ?? 0;
+    const totalValue =
+      eventData.vaultAssetTotalValueUnlocked ??
+      eventData.vaultAssetTotalValueBefore ??
+      1;
+    const requestPercent = (requestedAmount / totalValue) * 100;
+    const isWithdrawAll = eventData.isWithdrawAll ?? false;
+
+    // Convert withdrawable timestamp to readable format
+    const withdrawableDate = eventData.withdrawableFromTs
+      ? new Date(eventData.withdrawableFromTs * 1000).toLocaleDateString()
+      : "Unknown";
+
+    // Send info notification
+    const infoAlert: InfoAlertData = {
+      type: "request_withdrawal",
+      amount: requestedAmount,
+      vault: eventData.vault,
+      user: eventData.user!,
+      percentageChange: requestPercent,
+      isWithdrawAll: isWithdrawAll,
+      withdrawableFromTs: eventData.withdrawableFromTs ?? 0,
+      timestamp: event.timestamp,
+    };
+    this.sendInfoAlert(infoAlert);
+
+    // Check for large request withdrawal
+    if (requestPercent > CONFIG.thresholds.largeRequestWithdrawPercent * 100) {
+      const criticalAlert: LargeRequestWithdrawalAlert = {
+        type: "large_request_withdrawal",
+        requestedAmount: requestedAmount,
+        percentage: requestPercent,
+        threshold: CONFIG.thresholds.largeRequestWithdrawPercent * 100,
+        vault: eventData.vault,
+        user: eventData.user!,
+        isWithdrawAll: isWithdrawAll,
+        withdrawableFromTs: eventData.withdrawableFromTs ?? 0,
+        timestamp: event.timestamp,
+      };
+      this.sendCriticalAlert(criticalAlert);
+    }
+  }
+
+  private handleCancelRequestWithdrawVault(event: VaultEvent): void {
+    const { eventData } = event;
+    const amountRefunded = eventData.amountLpRefunded ?? 0;
+    const amountBurned = eventData.amountLpBurned ?? 0;
+    const totalAmount = amountRefunded + amountBurned;
+
+    // Send info notification
+    const infoAlert: InfoAlertData = {
+      type: "cancel_request_withdrawal",
+      amount: totalAmount,
+      vault: eventData.vault,
+      user: eventData.user!,
+      percentageChange: 0,
+      timestamp: event.timestamp,
+    };
+    this.sendInfoAlert(infoAlert);
   }
 
   private handleVaultDeposit(event: VaultEvent): void {
@@ -442,6 +513,29 @@ class VoltrAlertService {
           data.vault
         )}</code>\n└ Time: ${time}`;
 
+      case "request_withdrawal":
+        const withdrawIcon = data.isWithdrawAll ? "🔄" : "⏳";
+        const withdrawText = data.isWithdrawAll
+          ? "WITHDRAW ALL"
+          : "PARTIAL WITHDRAWAL";
+        const withdrawableDate = data.withdrawableFromTs
+          ? new Date(data.withdrawableFromTs * 1000).toLocaleDateString()
+          : "Unknown";
+
+        return `${withdrawIcon} <b>Request ${withdrawText}</b>\n├ Amount: ${data.amount.toLocaleString()}\n├ Percentage: ${changeText}\n├ User: <code>${shortAddress(
+          data.user
+        )}</code>\n├ Vault: <code>${shortAddress(
+          data.vault
+        )}</code>\n├ Available: ${withdrawableDate}\n└ Time: ${time}`;
+
+      // NEW: Cancel request withdrawal formatting
+      case "cancel_request_withdrawal":
+        return `❌ <b>Cancel Withdrawal Request</b>\n├ Amount: ${data.amount.toLocaleString()}\n├ User: <code>${shortAddress(
+          data.user
+        )}</code>\n├ Vault: <code>${shortAddress(
+          data.vault
+        )}</code>\n└ Time: ${time}`;
+
       case "strategy_deposit":
         return `📈 <b>Strategy Deposit</b>\n├ Amount: ${data.amount.toLocaleString()}\n├ Size: ${changeText}${formatPnL(
           data.pnl,
@@ -492,33 +586,56 @@ class VoltrAlertService {
     let message = `🚨🚨🚨 <b>CRITICAL ALERT</b> 🚨🚨🚨\n@${CONFIG.telegram.usernameA}\n@${CONFIG.telegram.usernameB}\n\n`;
 
     if (data.type.startsWith("large_")) {
-      const transactionData = data as LargeTransactionAlert;
-      const action = data.type.includes("deposit") ? "DEPOSIT" : "WITHDRAWAL";
-      const context = data.type.includes("vault") ? "VAULT" : "STRATEGY";
+      if (data.type === "large_request_withdrawal") {
+        // NEW: Handle large request withdrawal alerts
+        const requestData = data as LargeRequestWithdrawalAlert;
+        const withdrawIcon = requestData.isWithdrawAll
+          ? "🔄 WITHDRAW ALL"
+          : "⏳ LARGE REQUEST";
+        const withdrawableDate = new Date(
+          requestData.withdrawableFromTs * 1000
+        ).toLocaleDateString();
 
-      message += `💥 <b>LARGE ${context} ${action}</b>\n`;
-      message += `├ Amount: <b>${transactionData.amount.toLocaleString()}</b>\n`;
-      message += `├ Percentage: <b>${transactionData.percentage.toFixed(
-        2
-      )}%</b>\n`;
-      message += `├ Threshold: ${transactionData.threshold}%\n`;
+        message += `💥 <b>${withdrawIcon} WITHDRAWAL</b>\n`;
+        message += `├ Requested: <b>${requestData.requestedAmount.toLocaleString()}</b>\n`;
+        message += `├ Percentage: <b>${requestData.percentage.toFixed(
+          2
+        )}%</b>\n`;
+        message += `├ Threshold: ${requestData.threshold}%\n`;
+        message += `├ Available: ${withdrawableDate}\n`;
+        message += `├ User: <code>${shortAddress(requestData.user)}</code>\n`;
+        message += `├ Vault: <code>${shortAddress(requestData.vault)}</code>`;
+      } else {
+        const transactionData = data as LargeTransactionAlert;
+        const action = data.type.includes("deposit") ? "DEPOSIT" : "WITHDRAWAL";
+        const context = data.type.includes("vault") ? "VAULT" : "STRATEGY";
 
-      if (transactionData.user) {
-        message += `├ User: <code>${shortAddress(
-          transactionData.user
-        )}</code>\n`;
+        message += `💥 <b>LARGE ${context} ${action}</b>\n`;
+        message += `├ Amount: <b>${transactionData.amount.toLocaleString()}</b>\n`;
+        message += `├ Percentage: <b>${transactionData.percentage.toFixed(
+          2
+        )}%</b>\n`;
+        message += `├ Threshold: ${transactionData.threshold}%\n`;
+
+        if (transactionData.user) {
+          message += `├ User: <code>${shortAddress(
+            transactionData.user
+          )}</code>\n`;
+        }
+        if (transactionData.strategy) {
+          message += `├ Strategy: <code>${shortAddress(
+            transactionData.strategy
+          )}</code>\n`;
+        }
+        if (transactionData.manager) {
+          message += `├ Manager: <code>${shortAddress(
+            transactionData.manager
+          )}</code>\n`;
+        }
+        message += `├ Vault: <code>${shortAddress(
+          transactionData.vault
+        )}</code>`;
       }
-      if (transactionData.strategy) {
-        message += `├ Strategy: <code>${shortAddress(
-          transactionData.strategy
-        )}</code>\n`;
-      }
-      if (transactionData.manager) {
-        message += `├ Manager: <code>${shortAddress(
-          transactionData.manager
-        )}</code>\n`;
-      }
-      message += `├ Vault: <code>${shortAddress(transactionData.vault)}</code>`;
     } else if (data.type === "strategy_significant_pnl") {
       const pnlData = data as StrategyPnLAlert;
       const pnlIcon = pnlData.pnl >= 0 ? "💚 GAIN" : "❤️ LOSS";
@@ -626,7 +743,9 @@ class VoltrAlertService {
       -8
     )}\n├ Chat ID: ${CONFIG.telegram.chatId}\n├ Log File: ${
       CONFIG.logFile
-    }\n└ Time: ${new Date().toLocaleString()}`;
+    }\n├ Request Withdrawal Threshold: ${
+      CONFIG.thresholds.largeRequestWithdrawPercent * 100
+    }%\n└ Time: ${new Date().toLocaleString()}`;
 
     await this.sendTelegramMessage(testMessage, false);
   }

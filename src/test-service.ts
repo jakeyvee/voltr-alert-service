@@ -104,6 +104,48 @@ class TestService {
     }
   }
 
+  // NEW: Test request withdrawal info alert
+  public async testRequestWithdrawalInfoAlert(): Promise<void> {
+    console.log("\nTesting request withdrawal info alert...");
+
+    const testMessage = `⏳ <b>Request PARTIAL WITHDRAWAL</b>
+├ Amount: 25,000
+├ Percentage: 📉 12.5%
+├ User: <code>ABC12345...XYZ98765</code>
+├ Vault: <code>DT3srSkT...wccwgkE</code>
+├ Available: ${new Date(
+      Date.now() + 7 * 24 * 60 * 60 * 1000
+    ).toLocaleDateString()}
+└ Time: ${new Date().toLocaleTimeString()}`;
+
+    const success = await this.sendTelegramMessage(testMessage, true);
+
+    if (success) {
+      console.log("✅ Request withdrawal info alert sent successfully");
+    } else {
+      console.log("❌ Request withdrawal info alert failed");
+    }
+  }
+
+  // NEW: Test cancel request withdrawal info alert
+  public async testCancelRequestWithdrawalAlert(): Promise<void> {
+    console.log("\nTesting cancel request withdrawal alert...");
+
+    const testMessage = `❌ <b>Cancel Withdrawal Request</b>
+├ Amount: 25,000
+├ User: <code>ABC12345...XYZ98765</code>
+├ Vault: <code>DT3srSkT...wccwgkE</code>
+└ Time: ${new Date().toLocaleTimeString()}`;
+
+    const success = await this.sendTelegramMessage(testMessage, true);
+
+    if (success) {
+      console.log("✅ Cancel request withdrawal alert sent successfully");
+    } else {
+      console.log("❌ Cancel request withdrawal alert failed");
+    }
+  }
+
   public async testCriticalAlert(): Promise<void> {
     console.log("\nTesting critical alert format...");
 
@@ -126,94 +168,139 @@ class TestService {
     }
   }
 
+  // NEW: Test large request withdrawal critical alert
+  public async testLargeRequestWithdrawalAlert(): Promise<void> {
+    console.log("\nTesting large request withdrawal critical alert...");
+
+    const testMessage = `🚨🚨🚨 <b>CRITICAL ALERT</b> 🚨🚨🚨
+@${CONFIG.telegram.username}
+
+💥 <b>🔄 WITHDRAW ALL WITHDRAWAL</b>
+├ Requested: <b>500,000</b>
+├ Percentage: <b>85.2%</b>
+├ Threshold: 15.0%
+├ Available: ${new Date(
+      Date.now() + 7 * 24 * 60 * 60 * 1000
+    ).toLocaleDateString()}
+├ User: <code>ABC12345...XYZ98765</code>
+├ Vault: <code>DT3srSkT...wccwgkE</code>
+└ Time: ${new Date().toLocaleString()}`;
+
+    const success = await this.sendTelegramMessage(testMessage, false);
+
+    if (success) {
+      console.log(
+        "✅ Large request withdrawal critical alert sent successfully"
+      );
+    } else {
+      console.log("❌ Large request withdrawal critical alert failed");
+    }
+  }
+
   public testLogParsing(): void {
     console.log("\nTesting log parsing...");
 
-    // Sample log line from your actual logs
-    const sampleLogLine = `{"message":"{\\"level\\":\\"info\\",\\"time\\":\\"2025-06-02T04:20:14.162Z\\",\\"service\\":\\"voltr-vault-listener\\",\\"version\\":\\"unknown\\",\\"timestamp\\":\\"2025-06-02T04:20:14.162Z\\",\\"programId\\":\\"vVoLTRjQmtFpiYoegx285Ze4gsLJ8ZxgFKVcuvmG1a8\\",\\"eventName\\":\\"depositStrategyEvent\\",\\"slot\\":344046326,\\"eventData\\":{\\"manager\\":\\"GFwEi2jkesr9sFdq2oyxdUdxgn4SKW4YjaVRADkTj3Pk\\",\\"vault\\":\\"DT3srSkTf2tyoAyz9nHf112MChkKEG7LGTGaGWccwgkE\\",\\"strategy\\":\\"Cwg2fnhSwJo7K8HRKBhYesnCGzc8tWbGFvXDL3wwdu3s\\",\\"vaultAmountAssetDeposited\\":0,\\"vaultAssetTotalValueBefore\\":106101123730,\\"vaultAssetTotalValueAfter\\":106101500326,\\"strategyPositionValueBefore\\":5315125216,\\"strategyPositionValueAfter\\":5315501812},\\"message\\":\\"depositStrategyEvent received\\"}\\n","timestamp":"2025-06-02 04:20:14 +00:00","type":"out","process_id":1,"app_name":"voltr-vault"}`;
+    // Test request withdrawal event parsing
+    const requestWithdrawLogLine = `{"message":"{\\"level\\":\\"info\\",\\"time\\":\\"2025-08-11T10:30:15.162Z\\",\\"service\\":\\"voltr-vault-listener\\",\\"version\\":\\"unknown\\",\\"timestamp\\":\\"2025-08-11T10:30:15.162Z\\",\\"programId\\":\\"vVoLTRjQmtFpiYoegx285Ze4gsLJ8ZxgFKVcuvmG1a8\\",\\"eventName\\":\\"requestWithdrawVaultEvent\\",\\"slot\\":344046326,\\"eventData\\":{\\"vault\\":\\"DT3srSkTf2tyoAyz9nHf112MChkKEG7LGTGaGWccwgkE\\",\\"user\\":\\"ABC12345678901234567890123456789XYZ98765\\",\\"requestedAmount\\":50000000000,\\"isAmountInLp\\":false,\\"isWithdrawAll\\":false,\\"requestWithdrawVaultReceipt\\":\\"REQ123456789\\",\\"amountLpEscrowed\\":48500000000,\\"withdrawableFromTs\\":1723636215,\\"vaultAssetTotalValueUnlocked\\":300000000000,\\"vaultAssetTotalValue\\":350000000000,\\"requestedTs\\":1723629015},\\"message\\":\\"requestWithdrawVaultEvent received\\"}\\n","timestamp":"2025-08-11 10:30:15 +00:00","type":"out","process_id":1,"app_name":"voltr-vault"}`;
 
     try {
-      // Parse the PM2 log line
-      const logEntry: PM2LogEntry = JSON.parse(sampleLogLine);
-
-      // Extract the actual event message
+      const logEntry: PM2LogEntry = JSON.parse(requestWithdrawLogLine);
       const eventData: VaultEvent = JSON.parse(logEntry.message);
 
-      console.log("✅ Log parsing successful");
+      console.log("✅ Request withdrawal log parsing successful");
       console.log("Event Name:", eventData.eventName);
       console.log("Vault:", eventData.eventData.vault);
-      console.log("Strategy:", eventData.eventData.strategy);
+      console.log("User:", eventData.eventData.user);
+      console.log("Requested Amount:", eventData.eventData.requestedAmount);
+      console.log("Is Withdraw All:", eventData.eventData.isWithdrawAll);
       console.log(
-        "Amount Deposited:",
-        eventData.eventData.vaultAmountAssetDeposited
+        "Withdrawable From:",
+        new Date(
+          (eventData.eventData.withdrawableFromTs ?? 0) * 1000
+        ).toLocaleDateString()
       );
 
-      // Test strategy value calculation
-      const before = eventData.eventData.strategyPositionValueBefore;
-      const after = eventData.eventData.strategyPositionValueAfter;
-
-      if (before && after) {
-        const change = after - before;
-        const changeUSD = change / 1_000_000;
-
-        console.log("Strategy Value Change:", `$${changeUSD.toFixed(2)}`);
-
-        // Test loss percentage calculation
-        if (before > after) {
-          const loss = before - after;
-          const lossPercentage = (loss / before) * 100;
-          console.log("Loss Percentage:", `${lossPercentage.toFixed(2)}%`);
-        }
-      }
+      // Calculate percentage
+      const requestedAmount = eventData.eventData.requestedAmount ?? 0;
+      const totalValue = eventData.eventData.vaultAssetTotalValueUnlocked ?? 1;
+      const percentage = (requestedAmount / totalValue) * 100;
+      console.log("Request Percentage:", `${percentage.toFixed(2)}%`);
     } catch (error) {
       console.error(
-        "❌ Log parsing failed:",
+        "❌ Request withdrawal log parsing failed:",
+        error instanceof Error ? error.message : error
+      );
+    }
+
+    // Test cancel request withdrawal event parsing
+    const cancelRequestLogLine = `{"message":"{\\"level\\":\\"info\\",\\"time\\":\\"2025-08-11T11:15:20.162Z\\",\\"service\\":\\"voltr-vault-listener\\",\\"version\\":\\"unknown\\",\\"timestamp\\":\\"2025-08-11T11:15:20.162Z\\",\\"programId\\":\\"vVoLTRjQmtFpiYoegx285Ze4gsLJ8ZxgFKVcuvmG1a8\\",\\"eventName\\":\\"cancelRequestWithdrawVaultEvent\\",\\"slot\\":344046500,\\"eventData\\":{\\"vault\\":\\"DT3srSkTf2tyoAyz9nHf112MChkKEG7LGTGaGWccwgkE\\",\\"user\\":\\"ABC12345678901234567890123456789XYZ98765\\",\\"requestWithdrawVaultReceipt\\":\\"REQ123456789\\",\\"amountLpRefunded\\":48500000000,\\"amountLpBurned\\":0,\\"cancelledTs\\":1723632615},\\"message\\":\\"cancelRequestWithdrawVaultEvent received\\"}\\n","timestamp":"2025-08-11 11:15:20 +00:00","type":"out","process_id":1,"app_name":"voltr-vault"}`;
+
+    try {
+      const logEntry: PM2LogEntry = JSON.parse(cancelRequestLogLine);
+      const eventData: VaultEvent = JSON.parse(logEntry.message);
+
+      console.log("✅ Cancel request withdrawal log parsing successful");
+      console.log("Event Name:", eventData.eventName);
+      console.log("Vault:", eventData.eventData.vault);
+      console.log("User:", eventData.eventData.user);
+      console.log("Amount LP Refunded:", eventData.eventData.amountLpRefunded);
+      console.log("Amount LP Burned:", eventData.eventData.amountLpBurned);
+    } catch (error) {
+      console.error(
+        "❌ Cancel request withdrawal log parsing failed:",
         error instanceof Error ? error.message : error
       );
     }
   }
 
   public testTypeDefinitions(): void {
-    console.log("\nTesting TypeScript type definitions...");
+    console.log("\nTesting enhanced TypeScript type definitions...");
 
     try {
-      // Test that our types work correctly
-      const sampleEvent: VaultEvent = {
+      // Test enhanced VaultEvent with request withdrawal
+      const sampleRequestEvent: VaultEvent = {
         level: "info",
-        time: "2025-06-02T04:20:14.162Z",
+        time: "2025-08-11T10:30:15.162Z",
         service: "voltr-vault-listener",
         version: "unknown",
-        timestamp: "2025-06-02T04:20:14.162Z",
+        timestamp: "2025-08-11T10:30:15.162Z",
         programId: "vVoLTRjQmtFpiYoegx285Ze4gsLJ8ZxgFKVcuvmG1a8",
-        eventName: "depositStrategyEvent",
+        eventName: "requestWithdrawVaultEvent",
         slot: 344046326,
         eventData: {
-          manager: "GFwEi2jkesr9sFdq2oyxdUdxgn4SKW4YjaVRADkTj3Pk",
           vault: "DT3srSkTf2tyoAyz9nHf112MChkKEG7LGTGaGWccwgkE",
-          strategy: "Cwg2fnhSwJo7K8HRKBhYesnCGzc8tWbGFvXDL3wwdu3s",
+          user: "ABC12345678901234567890123456789XYZ98765",
           vaultAssetMint: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
-          vaultAmountAssetDeposited: 0,
-          vaultAssetTotalValueBefore: 106101123730,
-          vaultAssetTotalValueAfter: 106101500326,
-          vaultLpSupplyInclFeesBefore: 105069668895057,
-          vaultLpSupplyInclFeesAfter: 105069668895057,
-          vaultHighestAssetPerLpDecimalBitsBefore: 0.0010098401623395148,
-          vaultHighestAssetPerLpDecimalBitsAfter: 0.0010098401623395148,
+          requestedAmount: 50000000000,
+          isAmountInLp: false,
+          isWithdrawAll: false,
+          requestWithdrawVaultReceipt: "REQ123456789",
+          amountLpEscrowed: 48500000000,
+          withdrawableFromTs: 1723636215,
+          vaultAssetTotalValueUnlocked: 300000000000,
+          vaultAssetTotalValueBefore: 350000000000,
+          vaultAssetTotalValueAfter: 350000000000,
+          vaultLpSupplyInclFeesBefore: 340000000000,
+          vaultLpSupplyInclFeesAfter: 340000000000,
+          vaultHighestAssetPerLpDecimalBitsBefore: 1.0298401623395148,
+          vaultHighestAssetPerLpDecimalBitsAfter: 1.0298401623395148,
           vaultAssetIdleAtaAmountBefore: 30862104,
           vaultAssetIdleAtaAmountAfter: 30862104,
-          strategyPositionValueBefore: 5315125216,
-          strategyPositionValueAfter: 5315501812,
-          depositedTs: 1748838013,
+          requestedTs: 1723629015,
         },
-        message: "depositStrategyEvent received",
+        message: "requestWithdrawVaultEvent received",
       };
 
       // Verify type checking works
       console.log("✅ Type definitions working correctly");
-      console.log("Sample event type:", sampleEvent.eventName);
+      console.log("Sample event type:", sampleRequestEvent.eventName);
       console.log(
-        "Sample vault:",
-        sampleEvent.eventData.vault.slice(0, 8) + "..."
+        "Requested amount:",
+        sampleRequestEvent.eventData.requestedAmount
+      );
+      console.log(
+        "Is withdraw all:",
+        sampleRequestEvent.eventData.isWithdrawAll
       );
     } catch (error) {
       console.error("❌ Type definition test failed:", error);
@@ -235,7 +322,16 @@ class TestService {
     await this.testInfoAlert();
     await this.delay(2000);
 
+    await this.testRequestWithdrawalInfoAlert();
+    await this.delay(2000);
+
+    await this.testCancelRequestWithdrawalAlert();
+    await this.delay(2000);
+
     await this.testCriticalAlert();
+    await this.delay(2000);
+
+    await this.testLargeRequestWithdrawalAlert();
 
     console.log("\n✅ All tests completed!");
     console.log("\nNext steps:");

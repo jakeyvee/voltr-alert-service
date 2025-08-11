@@ -11,6 +11,7 @@ export interface AlertThresholds {
   largeVaultDepositPercent: number;
   largeVaultWithdrawalPercent: number;
   largeStrategyPnlPercent: number;
+  largeRequestWithdrawPercent: number;
   highFrequencyEvents: number;
   highFrequencyWindow: number;
 }
@@ -58,9 +59,25 @@ export interface VaultEventData {
   strategyPositionValueBefore?: number;
   strategyPositionValueAfter?: number;
 
+  // Request withdrawal specific fields
+  requestedAmount?: number;
+  isAmountInLp?: boolean;
+  isWithdrawAll?: boolean;
+  requestWithdrawVaultReceipt?: string;
+  amountLpEscrowed?: number;
+  amountAssetToWithdrawDecimalBits?: number;
+  withdrawableFromTs?: number;
+  vaultAssetTotalValueUnlocked?: number;
+  
+  // Cancel request withdrawal specific fields
+  amountLpRefunded?: number;
+  amountLpBurned?: number;
+
   // Timestamps
   depositedTs?: number;
   withdrawnTs?: number;
+  requestedTs?: number;
+  cancelledTs?: number;
 }
 
 export interface VaultEvent {
@@ -109,7 +126,9 @@ export interface InfoAlertData extends BaseAlertData {
     | "vault_withdrawal"
     | "strategy_deposit"
     | "strategy_withdrawal"
-    | "direct_strategy_withdrawal";
+    | "direct_strategy_withdrawal"
+    | "request_withdrawal"
+    | "cancel_request_withdrawal";
   amount: number;
   percentageChange: number;
   pnl?: number;
@@ -117,6 +136,8 @@ export interface InfoAlertData extends BaseAlertData {
   user?: string;
   strategy?: string;
   manager?: string;
+  isWithdrawAll?: boolean;
+  withdrawableFromTs?: number;
 }
 
 export interface CriticalAlertData extends BaseAlertData {
@@ -126,7 +147,17 @@ export interface CriticalAlertData extends BaseAlertData {
     | "large_strategy_deposit"
     | "large_strategy_withdrawal"
     | "strategy_significant_pnl"
+    | "large_request_withdrawal"
     | "high_frequency";
+}
+export interface LargeRequestWithdrawalAlert extends CriticalAlertData {
+  type: "large_request_withdrawal";
+  requestedAmount: number;
+  percentage: number;
+  threshold: number;
+  isWithdrawAll: boolean;
+  user: string;
+  withdrawableFromTs: number;
 }
 
 export interface LargeTransactionAlert extends CriticalAlertData {
@@ -168,6 +199,7 @@ export interface HighFrequencyAlert extends CriticalAlertData {
 export type AlertData =
   | InfoAlertData
   | LargeTransactionAlert
+  | LargeRequestWithdrawalAlert
   | StrategyPnLAlert
   | HighFrequencyAlert;
 
