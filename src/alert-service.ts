@@ -37,7 +37,7 @@ const CONFIG: ServiceConfig = {
   thresholds: {
     largeVaultDepositPercent: 0.1, // 10% of total vault value
     largeVaultWithdrawalPercent: 0.1, // 10% of total vault value
-    largeStrategyPnlPercent: 0.01, // 1% PnL change
+    largeStrategyPnlPercent: 0.05, // 5% PnL change
     largeRequestWithdrawPercent: 0.15, // 15% of total vault value for request withdrawals
     highFrequencyEvents: 10,
     highFrequencyWindow: 60000,
